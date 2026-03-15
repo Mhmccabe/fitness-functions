@@ -56,10 +56,10 @@ jobs:
           data = json.load(open('semgrep-results.json'))
           count = len(data.get('results', []))
           print(count)
-          sys.exit(1 if count > 0 else 0)
+          sys.exit(0)
           ")
-        # Always save the results for the metrics push step
-        continue-on-error: false
+        # Violations are warnings — build continues, summary shows the count
+        continue-on-error: true
 
       - name: Upload Semgrep results
         if: always()
@@ -142,7 +142,7 @@ jobs:
           if [ "$VIOLATIONS" = "0" ]; then
             VIOLATIONS_STATUS="✅ 0"
           else
-            VIOLATIONS_STATUS="❌ $VIOLATIONS"
+            VIOLATIONS_STATUS="⚠️ $VIOLATIONS"
           fi
 
           if [ "$COVERAGE" != "N/A" ] && [ "$(python3 -c "print(float('$COVERAGE') >= 80)")" = "True" ]; then

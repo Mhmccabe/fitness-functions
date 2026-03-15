@@ -113,6 +113,54 @@ The service code only ever sees `ILogger<T>`. Swapping Serilog for another provi
 
 ---
 
+## Moving from Warning to Error
+
+Semgrep violations currently produce a **warning** — the build stays green but the summary shows a ⚠️ count. Once your team has fixed existing violations and wants to enforce the standard as a hard gate, promote it to an error:
+
+### Step 1 — Fix all violations
+
+```bash
+semgrep --config .semgrep/logging-rules.yml src/ --exclude="*Bad.cs"
+```
+
+Work through each finding:
+
+- Replace `Console.WriteLine` / `Debug.WriteLine` with `_logger.LogInformation("event.name {Property}", value)`
+- Replace string interpolation in log calls: `$"Order {id}"` → `"order.started {OrderId}", orderId`
+- Replace string concatenation: `"Order " + id` → `"order.started {OrderId}", orderId`
+- Replace `new Logger<T>(...)` with constructor-injected `ILogger<T>`
+
+### Step 2 — Confirm zero violations locally
+
+```bash
+semgrep --config .semgrep/logging-rules.yml src/ --exclude="*Bad.cs"
+# Expected: "Findings: 0"
+```
+
+### Step 3 — Promote to error in the workflow
+
+In [`.github/workflows/fitness-dotnet-logging.yml`](../../.github/workflows/fitness-dotnet-logging.yml), change:
+
+```yaml
+        continue-on-error: true   # warning
+```
+
+to:
+
+```yaml
+        continue-on-error: false  # error — blocks the build
+```
+
+And restore the exit code:
+
+```python
+sys.exit(1 if count > 0 else 0)
+```
+
+Once merged, any new violation will fail the build and block the PR.
+
+---
+
 ## SonarQube built-in rules (complement Semgrep)
 
 | Rule | What it catches |

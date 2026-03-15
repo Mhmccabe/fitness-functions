@@ -130,6 +130,47 @@ The [GitHub Actions workflow](.github/workflows/fitness-python-logging.yml) runs
 
 ---
 
+## Moving from Warning to Error
+
+Semgrep violations currently produce a **warning** — the build stays green but the summary shows a ⚠️ count. Once your team has fixed existing violations and wants to enforce the standard as a hard gate, promote it to an error:
+
+**Step 1 — Fix all violations**
+```bash
+# See every current violation
+semgrep --config .semgrep/logging-rules.yml src/
+```
+Work through each finding:
+- Replace `print()` with `log.info("event.name", key=value)`
+- Replace `import logging` / `logging.getLogger()` with `import structlog; log = structlog.get_logger()`
+- Replace f-strings in log calls with keyword arguments: `log.info("event", user_id=user_id)`
+- Remove the `log.error(...)` before a `raise` — let the exception propagate and log once at the boundary
+
+**Step 2 — Confirm zero violations locally**
+```bash
+semgrep --config .semgrep/logging-rules.yml src/ --exclude="src/app_bad.py"
+# Expected: "Findings: 0"
+```
+
+**Step 3 — Promote to error in the workflow**
+
+In [`.github/workflows/fitness-python-logging.yml`](../../.github/workflows/fitness-python-logging.yml), change:
+```yaml
+        continue-on-error: true   # warning
+```
+to:
+```yaml
+        continue-on-error: false  # error — blocks the build
+```
+
+And restore the exit code:
+```python
+sys.exit(1 if count > 0 else 0)
+```
+
+Once merged, any new violation will fail the build and block the PR.
+
+---
+
 ## SonarQube setup
 
 Before the first run, register the custom metric and gate condition (admin only):

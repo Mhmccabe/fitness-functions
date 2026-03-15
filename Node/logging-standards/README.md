@@ -96,6 +96,52 @@ router.post('/orders', async (req, res) => {
 
 ---
 
+## Moving from Warning to Error
+
+Semgrep violations currently produce a **warning** — the build stays green but the summary shows a ⚠️ count. Once your team has fixed existing violations and wants to enforce the standard as a hard gate, promote it to an error:
+
+### Step 1 — Fix all violations
+
+```bash
+semgrep --config .semgrep/logging-rules.yml src/ --exclude="*-bad.js"
+```
+
+Work through each finding:
+- Replace `console.log/warn/error` with `log.info({ ... }, 'event.name')`
+- Replace `require('pino')` directly with the shared logger factory: `const { createLogger } = require('./logger')`
+- Replace template literals in log calls with a context object: `log.info({ orderId }, 'order.started')`
+
+### Step 2 — Confirm zero violations locally
+
+```bash
+semgrep --config .semgrep/logging-rules.yml src/ --exclude="*-bad.js"
+# Expected: "Findings: 0"
+```
+
+### Step 3 — Promote to error in the workflow
+
+In [`.github/workflows/fitness-node-logging.yml`](../../.github/workflows/fitness-node-logging.yml), change:
+
+```yaml
+        continue-on-error: true   # warning
+```
+
+to:
+
+```yaml
+        continue-on-error: false  # error — blocks the build
+```
+
+And restore the exit code:
+
+```python
+sys.exit(1 if count > 0 else 0)
+```
+
+Once merged, any new violation will fail the build and block the PR.
+
+---
+
 ## Key files
 
 | File | Purpose |
