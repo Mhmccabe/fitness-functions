@@ -50,7 +50,9 @@ jobs:
             --exclude="*Bad.cs" \
             --json \
             --output semgrep-results.json \
-            --quiet
+            --quiet \
+            --no-autofix \
+            --metrics=off || true
           VIOLATIONS=$(python3 -c "
           import json, sys
           data = json.load(open('semgrep-results.json'))
