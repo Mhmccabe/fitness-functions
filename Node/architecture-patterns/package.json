@@ -10,12 +10,14 @@
   },
   "devDependencies": {
     "dependency-cruiser": "^16.4.0",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "jest-junit": "^16.0.0"
   },
   "jest": {
     "testMatch": ["**/tests/**/*.test.js"],
     "collectCoverageFrom": ["src/**/*.js", "!src/bad/**"],
     "coverageReporters": ["lcov", "text-summary"],
-    "coverageDirectory": "coverage"
+    "coverageDirectory": "coverage",
+    "reporters": ["default", ["jest-junit", {"outputDirectory": "test-results", "outputName": "junit.xml"}]]
   }
 }

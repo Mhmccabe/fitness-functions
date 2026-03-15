@@ -115,10 +115,12 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
+          mkdir -p test-results
           pytest tests/ \
             --cov=src \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
+            --junitxml=test-results/junit.xml \
             --tb=short
 
       - name: Upload coverage report
@@ -127,6 +129,13 @@ jobs:
         with:
           name: coverage-report-python-architecture
           path: Python/architecture-patterns/coverage.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results-python-architecture
+          path: Python/architecture-patterns/test-results/junit.xml
 
       # ── Layer 3: SonarQube static analysis ────────────────────────────────
       - name: SonarQube scan

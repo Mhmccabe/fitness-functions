@@ -113,7 +113,8 @@ jobs:
           dotnet test ArchitecturePatterns.sln \
             --configuration Release \
             --collect:"XPlat Code Coverage" \
-            --results-directory ./coverage \
+            --logger "trx;LogFileName=test-results.trx" \
+            --results-directory ./TestResults \
             -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
       - name: Upload coverage report
@@ -121,7 +122,14 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: coverage-report-dotnet-architecture
-          path: dotnet/architecture-patterns/coverage/**/coverage.opencover.xml
+          path: dotnet/architecture-patterns/TestResults/**/coverage.opencover.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results-dotnet-architecture
+          path: dotnet/architecture-patterns/TestResults/**/*.trx
 
       # ── Layer 3: SonarQube static analysis ────────────────────────────────
       - name: SonarQube scan
