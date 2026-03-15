@@ -1,0 +1,8 @@
+bin/
+obj/
+*.user
+.vs/
+coverage/
+semgrep-results.json
+semgrep.sarif
+TestResults/

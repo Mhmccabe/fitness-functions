@@ -1,0 +1,191 @@
+name: Fitness Functions — Python Architecture Patterns
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Python/architecture-patterns/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Python/architecture-patterns/**'
+  schedule:
+    # Weekly full scan every Monday at 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: Python/architecture-patterns
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  fitness-functions:
+    name: Architecture Fitness Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools
+          pip install -e ".[dev]"
+
+      # ── Layer 1: Semgrep — Architecture standards ──────────────────────────
+      - name: Semgrep — architecture rules
+        run: |
+          semgrep \
+            --config .semgrep/architecture-rules.yml \
+            src/ \
+            --json \
+            --output semgrep-results.json \
+            --quiet \
+            --no-autofix \
+            --metrics=off || true
+          VIOLATIONS=$(python3 -c "
+          import json, sys
+          data = json.load(open('semgrep-results.json'))
+          count = len(data.get('results', []))
+          print(count)
+          sys.exit(0)
+          ")
+        continue-on-error: true
+
+      - name: Convert Semgrep results to SARIF
+        if: always()
+        run: |
+          python3 - << 'PYEOF'
+          import json
+
+          try:
+              data = json.load(open('semgrep-results.json'))
+              results = data.get('results', [])
+          except Exception:
+              results = []
+
+          runs = [{"tool": {"driver": {"name": "Semgrep", "informationUri": "https://semgrep.dev", "rules": []}}, "results": []}]
+          rule_ids = {}
+          for r in results:
+              rule_id = r.get('check_id', 'unknown')
+              msg = r.get('extra', {}).get('message', '').splitlines()[0]
+              if rule_id not in rule_ids:
+                  rule_ids[rule_id] = True
+                  runs[0]['tool']['driver']['rules'].append({"id": rule_id, "shortDescription": {"text": msg}, "helpUri": "https://semgrep.dev"})
+              runs[0]['results'].append({"ruleId": rule_id, "message": {"text": msg}, "locations": [{"physicalLocation": {"artifactLocation": {"uri": r.get('path', '')}, "region": {"startLine": r.get('start', {}).get('line', 1), "startColumn": r.get('start', {}).get('col', 1)}}}], "level": "warning"})
+
+          sarif = {"version": "2.1.0", "$schema": "https://json.schemastore.org/sarif-2.1.0.json", "runs": runs}
+          with open('semgrep.sarif', 'w') as f:
+              json.dump(sarif, f, indent=2)
+          PYEOF
+
+      - name: Upload Semgrep SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818 # v3
+        with:
+          sarif_file: Python/architecture-patterns/semgrep.sarif
+          category: semgrep-python-architecture
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: semgrep-results-python-architecture
+          path: Python/architecture-patterns/semgrep-results.json
+
+      # ── Layer 2: import-linter + pytest ────────────────────────────────────
+      - name: Check import-linter contracts
+        run: lint-imports
+
+      - name: Run tests with coverage
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/ \
+            --cov=src \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --tb=short
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-report-python-architecture
+          path: Python/architecture-patterns/coverage.xml
+
+      # ── Layer 3: SonarQube static analysis ────────────────────────────────
+      - name: SonarQube scan
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@13990a695682794b53148ff9f6a8b6e22e43955e # v3
+        with:
+          projectBaseDir: Python/architecture-patterns
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      # ── Layer 4: GitHub Actions job summary ───────────────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          python3 - << 'PYEOF'
+          import json, xml.etree.ElementTree as ET
+
+          try:
+              data = json.load(open('semgrep-results.json'))
+              results = data.get('results', [])
+              violation_count = len(results)
+          except Exception:
+              results = []
+              violation_count = 'N/A'
+
+          try:
+              rate = float(ET.parse('coverage.xml').getroot().get('line-rate', 0)) * 100
+              coverage = f'{rate:.1f}'
+              coverage_ok = rate >= 80
+          except Exception:
+              coverage = 'N/A'
+              coverage_ok = False
+
+          v_icon = '✅' if violation_count == 0 else '⚠️'
+          c_icon = '✅' if coverage_ok else '❌'
+
+          lines = []
+          lines.append('## Fitness Function — Python Architecture Patterns\n')
+          lines.append('| Check | Result |')
+          lines.append('|---|---|')
+          lines.append(f'| Architecture violations (semgrep) | {v_icon} {violation_count} |')
+          lines.append(f'| Test coverage | {c_icon} {coverage}% |')
+          lines.append('')
+
+          if results:
+              lines.append('### ⚠️ Violations\n')
+              lines.append('| File | Line | Rule | Message |')
+              lines.append('|---|---|---|---|')
+              for r in results:
+                  path = r.get('path', '')
+                  line = r.get('start', {}).get('line', '')
+                  rule = r.get('check_id', '').split('.')[-1]
+                  msg  = r.get('extra', {}).get('message', '').splitlines()[0][:120]
+                  lines.append(f'| `{path}` | {line} | `{rule}` | {msg} |')
+              lines.append('')
+
+          lines.append(f'**Commit:** `${{ github.sha }}`  ')
+          lines.append(f'**Branch:** `${{ github.ref_name }}`  ')
+          lines.append(f'**Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})')
+
+          with open('$GITHUB_STEP_SUMMARY', 'a') as f:
+              f.write('\n'.join(lines) + '\n')
+          PYEOF

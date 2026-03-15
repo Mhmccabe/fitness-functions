@@ -1,0 +1,59 @@
+rules:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 1: No repository import in controller
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-repository-import-in-controller
+    languages: [javascript]
+    severity: ERROR
+    message: >
+      Controllers must not import from the repositories directory directly.
+      Controllers should delegate to the service layer, which accesses repositories.
+      Replace: require('../repositories/...')
+      With:    require('../services/...') and call through the service.
+    patterns:
+      - pattern: require('$PATH')
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: ".*repositories.*"
+    paths:
+      include:
+        - src/controllers/
+        - src/bad/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 2: No service import in routes (skips controller layer)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-service-import-in-routes
+    languages: [javascript]
+    severity: ERROR
+    message: >
+      Routes must not import services directly — this skips the controller layer.
+      Dependency direction: routes → controllers → services → repositories.
+      Replace: require('../services/...')
+      With:    require('../controllers/...') and delegate from there.
+    patterns:
+      - pattern: require('$PATH')
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: ".*services.*"
+    paths:
+      include:
+        - src/routes/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 3: No controller import in service (upward dependency)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-controller-import-in-service
+    languages: [javascript]
+    severity: ERROR
+    message: >
+      Services must not import from the controllers directory.
+      This creates an upward dependency and breaks the layered architecture.
+    patterns:
+      - pattern: require('$PATH')
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: ".*controllers.*"
+    paths:
+      include:
+        - src/services/

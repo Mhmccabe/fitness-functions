@@ -1,0 +1,158 @@
+name: Fitness Functions — Java Architecture Patterns
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Java/architecture-patterns/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Java/architecture-patterns/**'
+  schedule:
+    # Weekly full scan every Monday at 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: Java/architecture-patterns
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  fitness-functions:
+    name: Architecture Fitness Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Install semgrep
+        run: pip install semgrep
+
+      # ── Layer 1: Semgrep — Architecture standards ──────────────────────────
+      - name: Semgrep — architecture rules
+        run: |
+          semgrep \
+            --config .semgrep/architecture-rules.yml \
+            src/main/ \
+            --exclude="*Bad.java" \
+            --json \
+            --output semgrep-results.json \
+            --quiet \
+            --no-autofix \
+            --metrics=off || true
+          VIOLATIONS=$(python3 -c "
+          import json, sys
+          data = json.load(open('semgrep-results.json'))
+          count = len(data.get('results', []))
+          print(count)
+          sys.exit(0)
+          ")
+
+      - name: Convert Semgrep results to SARIF
+        if: always()
+        run: |
+          python3 - << 'PYEOF'
+          import json
+
+          try:
+              data = json.load(open('semgrep-results.json'))
+              results = data.get('results', [])
+          except Exception:
+              results = []
+
+          runs = [{"tool": {"driver": {"name": "Semgrep", "informationUri": "https://semgrep.dev", "rules": []}}, "results": []}]
+          rule_ids = {}
+          for r in results:
+              rule_id = r.get('check_id', 'unknown')
+              msg = r.get('extra', {}).get('message', '').splitlines()[0]
+              if rule_id not in rule_ids:
+                  rule_ids[rule_id] = True
+                  runs[0]['tool']['driver']['rules'].append({"id": rule_id, "shortDescription": {"text": msg}, "helpUri": "https://semgrep.dev"})
+              runs[0]['results'].append({"ruleId": rule_id, "message": {"text": msg}, "locations": [{"physicalLocation": {"artifactLocation": {"uri": r.get('path', '')}, "region": {"startLine": r.get('start', {}).get('line', 1), "startColumn": r.get('start', {}).get('col', 1)}}}], "level": "warning"})
+
+          sarif = {"version": "2.1.0", "$schema": "https://json.schemastore.org/sarif-2.1.0.json", "runs": runs}
+          with open('semgrep.sarif', 'w') as f:
+              json.dump(sarif, f, indent=2)
+          PYEOF
+
+      - name: Upload Semgrep SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818 # v3
+        with:
+          sarif_file: Java/architecture-patterns/semgrep.sarif
+          category: semgrep-java-architecture
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: semgrep-results-java-architecture
+          path: Java/architecture-patterns/semgrep-results.json
+
+      # ── Layer 2: Maven build + ArchUnit tests ──────────────────────────────
+      - name: Build and test with Maven (ArchUnit)
+        run: mvn clean verify
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-report-java-architecture
+          path: Java/architecture-patterns/target/site/jacoco/jacoco.xml
+
+      # ── Layer 3: SonarQube static analysis ────────────────────────────────
+      - name: SonarQube scan
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@13990a695682794b53148ff9f6a8b6e22e43955e # v3
+        with:
+          projectBaseDir: Java/architecture-patterns
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      # ── Layer 4: GitHub Actions job summary ───────────────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          VIOLATIONS=$(python3 -c "
+          import json, sys
+          try:
+              data = json.load(open('semgrep-results.json'))
+              print(len(data.get('results', [])))
+          except Exception:
+              print('N/A')
+          ")
+
+          if [[ "$VIOLATIONS" = "0" ]]; then
+            VIOLATIONS_STATUS="✅ 0"
+          else
+            VIOLATIONS_STATUS="⚠️ $VIOLATIONS"
+          fi
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Fitness Function — Java Architecture Patterns
+
+          | Check | Result |
+          |---|---|
+          | Architecture violations (semgrep) | ${VIOLATIONS_STATUS} |
+          | ArchUnit layer tests | See test results above |
+
+          **Commit:** \`${{ github.sha }}\`
+          **Branch:** \`${{ github.ref_name }}\`
+          **Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
