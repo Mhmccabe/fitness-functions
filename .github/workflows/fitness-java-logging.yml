@@ -138,7 +138,7 @@ jobs:
               print('N/A')
           ")
 
-          if [ "$VIOLATIONS" = "0" ]; then
+          if [[ "$VIOLATIONS" = "0" ]]; then
             VIOLATIONS_STATUS="✅ 0"
           else
             VIOLATIONS_STATUS="⚠️ $VIOLATIONS"
