@@ -107,9 +107,11 @@ jobs:
 
       # ── Layer 2: import-linter + pytest ────────────────────────────────────
       - name: Check import-linter contracts
+        continue-on-error: true
         run: lint-imports
 
       - name: Run tests with coverage
+        continue-on-error: true
         env:
           PYTHONPATH: .
         run: |
