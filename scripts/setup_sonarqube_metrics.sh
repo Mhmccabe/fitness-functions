@@ -25,7 +25,8 @@ register_metric() {
   curl -sf -X POST "${SONAR_URL}/api/custom_metrics/create" \
     "${AUTH[@]}" \
     --data "key=${key}&name=${name}&type=${type}&domain=${domain}" \
-    > /dev/null || echo "    (already exists — skipping)"
+    > /dev/null || echo "    (already exists — skipping)" >&2
+  return 0
 }
 
 # Observability layer
@@ -53,7 +54,7 @@ GATE_RESPONSE=$(curl -sf -X POST "${SONAR_URL}/api/qualitygates/create" \
 GATE_ID=$(echo "$GATE_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
 if [[ -z "$GATE_ID" ]]; then
-  echo "  Gate may already exist. Fetching existing gate ID..."
+  echo "  Gate may already exist. Fetching existing gate ID..." >&2
   GATE_ID=$(curl -sf "${SONAR_URL}/api/qualitygates/list" \
     "${AUTH[@]}" \
     | grep -o '"id":"[^"]*","name":"Fitness Functions Gate"' \
@@ -71,6 +72,7 @@ add_condition() {
     "${AUTH[@]}" \
     --data "gateId=${GATE_ID}&metric=${metric}&op=${op}&error=${error}" \
     > /dev/null
+  return 0
 }
 
 # Security

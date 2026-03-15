@@ -12,7 +12,7 @@
  */
 
 const { createLogger } = require('./logger');
-const { randomUUID } = require('crypto');
+const { randomUUID } = require('node:crypto');
 
 const log = createLogger({ module: 'order-service' });
 
