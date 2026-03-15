@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../src/LoggingStandards.csproj" />
+    <Compile Include="../src/OrderServiceGood.cs" />
   </ItemGroup>
 
 </Project>
