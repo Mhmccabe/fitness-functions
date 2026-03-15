@@ -25,6 +25,29 @@ src/test/java/example/
 └── ArchitectureTest.java             ArchUnit rules as JUnit 5 tests
 ```
 
+## CI pipeline
+
+The GitHub Actions workflow (`.github/workflows/fitness-java-architecture.yml`) runs 4 layers:
+
+| Layer | Tool | Output |
+| --- | --- | --- |
+| 1 | Semgrep | SARIF → GitHub Code Scanning |
+| 2 | Maven + ArchUnit | JUnit XML → SonarQube Tests tab |
+| 3 | SonarQube scan | Issues, coverage, test results |
+| 4 | Job summary | Violation count in Actions Summary tab |
+
+All failures are **warnings** — the build passes regardless. See [Moving from warning to error](#moving-from-warning-to-error) to harden.
+
+## SonarQube
+
+After each pipeline run, results appear in the SonarQube project `fitness-functions-java-architecture`:
+
+- **Tests tab** — each ArchUnit test listed individually (pass/fail/duration)
+- **Issues tab** — any Semgrep findings tagged by rule ID
+- **Measures → Coverage** — JaCoCo line coverage
+
+Test results are imported via `sonar.junit.reportPaths=target/surefire-reports` in `sonar-project.properties`.
+
 ## Running locally
 
 ```bash
@@ -43,5 +66,5 @@ semgrep --config .semgrep/architecture-rules.yml src/main/ --exclude="*Bad.java"
 The CI pipeline currently treats violations as **warnings** — the build passes even with findings. To promote to a hard gate:
 
 1. Remove `|| true` from the Semgrep step in `.github/workflows/fitness-java-architecture.yml`
-2. Remove `continue-on-error: true` from the SonarQube step
+2. Remove `continue-on-error: true` from the Maven and SonarQube steps
 3. Add a violation threshold check: if violations > 0, exit 1
