@@ -49,7 +49,7 @@ data = json.load(open('$SEMGREP_RESULTS'))
 print(len(data.get('results', [])))
 ")
 
-if [ "$VIOLATIONS" -gt 0 ]; then
+if [[ "$VIOLATIONS" -gt 0 ]]; then
   echo "  FAILED: $VIOLATIONS violation(s) found"
   semgrep --config .semgrep/logging-rules.yml src/main/ --quiet 2>&1 || true
   PASSED=false
@@ -77,7 +77,7 @@ fi
 echo ""
 
 # ── Step 3: sonar-scanner ────────────────────────────────────────────────────
-if command -v sonar-scanner &> /dev/null && [ -n "${SONAR_URL:-}" ]; then
+if command -v sonar-scanner &> /dev/null && [[ -n "${SONAR_URL:-}" ]]; then
   echo ">>> Step 3: sonar-scanner"
   sonar-scanner
   echo ""
@@ -88,7 +88,7 @@ fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 echo "============================================================"
-if [ "$PASSED" = true ]; then
+if [[ "$PASSED" = true ]]; then
   echo " RESULT: ALL CHECKS PASSED"
   exit 0
 else
