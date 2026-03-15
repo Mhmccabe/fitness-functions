@@ -1,3 +1,13 @@
+## Build Status
+
+| Project | Status |
+|---|---|
+| Python Logging Standards | [![Python Logging](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-python-logging.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-python-logging.yml) |
+| Node Logging Standards | [![Node Logging](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-node-logging.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-node-logging.yml) |
+| Java Logging Standards | [![Java Logging](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-java-logging.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-java-logging.yml) |
+| .NET Logging Standards | [![.NET Logging](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-dotnet-logging.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-dotnet-logging.yml) |
+
+---
 
 ## What SonarQube can track as fitness functions
 
