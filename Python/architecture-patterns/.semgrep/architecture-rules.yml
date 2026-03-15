@@ -1,0 +1,58 @@
+rules:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 1: No repository import in api layer
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-repository-import-in-api
+    languages: [python]
+    severity: ERROR
+    message: >
+      The API layer must not import from src.repositories directly.
+      The API layer should delegate to src.services, which accesses repositories.
+      Replace: from src.repositories import ...
+      With:    from src.services import ... and call through the service.
+    patterns:
+      - pattern: from src.repositories import $X
+    paths:
+      include:
+        - src/api/
+        - src/bad/
+
+  - id: no-repository-module-import-in-api
+    languages: [python]
+    severity: ERROR
+    message: >
+      The API layer must not import from src.repositories directly.
+      Delegate to src.services instead.
+    patterns:
+      - pattern: import src.repositories
+    paths:
+      include:
+        - src/api/
+        - src/bad/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 2: No api import in services (upward dependency)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-api-import-in-services
+    languages: [python]
+    severity: ERROR
+    message: >
+      Services must not import from src.api.
+      Dependency direction: api → services → repositories.
+      A service that imports the api layer creates an upward dependency.
+    patterns:
+      - pattern: from src.api import $X
+    paths:
+      include:
+        - src/services/
+
+  - id: no-api-module-import-in-services
+    languages: [python]
+    severity: ERROR
+    message: >
+      Services must not import from src.api.
+    patterns:
+      - pattern: import src.api
+    paths:
+      include:
+        - src/services/

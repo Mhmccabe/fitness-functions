@@ -6,6 +6,10 @@
 | Node Logging Standards | [![Node Logging](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-node-logging.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-node-logging.yml) |
 | Java Logging Standards | [![Java Logging](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-java-logging.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-java-logging.yml) |
 | .NET Logging Standards | [![.NET Logging](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-dotnet-logging.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-dotnet-logging.yml) |
+| Java Architecture Patterns | [![Java Architecture](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-java-architecture.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-java-architecture.yml) |
+| Node Architecture Patterns | [![Node Architecture](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-node-architecture.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-node-architecture.yml) |
+| Python Architecture Patterns | [![Python Architecture](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-python-architecture.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-python-architecture.yml) |
+| .NET Architecture Patterns | [![.NET Architecture](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-dotnet-architecture.yml/badge.svg)](https://github.com/Mhmccabe/fitness-functions/actions/workflows/fitness-dotnet-architecture.yml) |
 
 ---
 

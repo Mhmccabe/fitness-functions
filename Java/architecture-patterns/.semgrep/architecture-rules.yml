@@ -1,0 +1,59 @@
+rules:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 1: No repository import in controller
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-repository-import-in-controller
+    languages: [java]
+    severity: ERROR
+    message: >
+      Controllers must not import from the repository package directly.
+      Controllers should delegate to the service layer, which in turn
+      accesses repositories. Direct repository access in a controller
+      bypasses business logic and couples the HTTP layer to the data layer.
+      Replace: import example.repository.XxxRepository;
+      With:    inject example.service.XxxService and call through it.
+    pattern: import example.repository.$X;
+    paths:
+      include:
+        - src/main/java/example/controller/
+        - src/main/java/example/bad/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 2: No controller import in service
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-controller-import-in-service
+    languages: [java]
+    severity: ERROR
+    message: >
+      Services must not import from the controller package.
+      The dependency direction must be: Controller → Service → Repository.
+      A service that imports a controller creates an upward dependency
+      and breaks the layered architecture.
+    pattern: import example.controller.$X;
+    paths:
+      include:
+        - src/main/java/example/service/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 3: No repository import in bad package (teaches the violation)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-direct-repository-instantiation-in-controller
+    languages: [java]
+    severity: WARNING
+    message: >
+      A controller is instantiating a repository class directly (new XxxRepository()).
+      This bypasses the service layer and creates tight coupling between
+      the HTTP and data-access layers. Use constructor injection of a service instead.
+    patterns:
+      - pattern: new $REPO(...)
+      - pattern-inside: |
+          class $CTRL {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $REPO
+          regex: ".*Repository"
+    paths:
+      include:
+        - src/main/java/example/controller/
+        - src/main/java/example/bad/

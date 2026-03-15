@@ -1,0 +1,52 @@
+rules:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 1: No Repositories using-directive in controller files
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-repository-using-in-controller
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Controller files must not add a using directive for the Repositories namespace.
+      Controllers should depend only on the Services layer (IOrderService).
+      Replace: using ArchitecturePatterns.Repositories;
+      With:    inject IOrderService via constructor.
+    pattern: using ArchitecturePatterns.Repositories;
+    paths:
+      include:
+        - src/Controllers/
+        - src/Bad/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 2: No Controllers using-directive in service files
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-controller-using-in-service
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Service files must not add a using directive for the Controllers namespace.
+      This creates an upward dependency and breaks the layered architecture.
+      Dependency direction: Controllers → Services → Repositories.
+    pattern: using ArchitecturePatterns.Controllers;
+    paths:
+      include:
+        - src/Services/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 3: No direct repository instantiation in controllers
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-repository-instantiation-in-controller
+    languages: [csharp]
+    severity: WARNING
+    message: >
+      A controller is instantiating a repository class directly (new XxxRepository()).
+      Controllers must receive an IOrderService via constructor injection.
+      Never bypass the service layer by instantiating a repository in a controller.
+    patterns:
+      - pattern: new $REPO(...)
+      - metavariable-regex:
+          metavariable: $REPO
+          regex: ".*Repository"
+    paths:
+      include:
+        - src/Controllers/
+        - src/Bad/

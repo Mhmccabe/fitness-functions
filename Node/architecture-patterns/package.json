@@ -1,0 +1,21 @@
+{
+  "name": "fitness-functions-node-architecture",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "npm run arch && npm run unit",
+    "arch": "depcruise --config .dependency-cruiser.cjs src",
+    "unit": "jest --coverage",
+    "arch:report": "depcruise --config .dependency-cruiser.cjs --output-type err-long src"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "^16.4.0",
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testMatch": ["**/tests/**/*.test.js"],
+    "collectCoverageFrom": ["src/**/*.js", "!src/bad/**"],
+    "coverageReporters": ["lcov", "text-summary"],
+    "coverageDirectory": "coverage"
+  }
+}
