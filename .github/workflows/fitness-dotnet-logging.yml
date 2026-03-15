@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - '.Net/logging-standards/**'
+      - 'dotnet/logging-standards/**'
   pull_request:
     branches: [main]
     paths:
-      - '.Net/logging-standards/**'
+      - 'dotnet/logging-standards/**'
   schedule:
     # Weekly full scan every Monday at 06:00 UTC
     - cron: '0 6 * * 1'
@@ -16,7 +16,7 @@ on:
 
 defaults:
   run:
-    working-directory: .Net/logging-standards
+    working-directory: dotnet/logging-standards
 
 jobs:
   fitness-functions:
@@ -60,7 +60,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-results-dotnet
-          path: .Net/logging-standards/semgrep-results.json
+          path: dotnet/logging-standards/semgrep-results.json
 
       # ── Layer 2: dotnet build and tests ────────────────────────────────────
       - name: Build
@@ -79,13 +79,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-dotnet
-          path: .Net/logging-standards/coverage/**/coverage.opencover.xml
+          path: dotnet/logging-standards/coverage/**/coverage.opencover.xml
 
       # ── Layer 3: SonarQube static analysis ────────────────────────────────
       - name: SonarQube scan
         uses: SonarSource/sonarqube-scan-action@v3
         with:
-          projectBaseDir: .Net/logging-standards
+          projectBaseDir: dotnet/logging-standards
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
