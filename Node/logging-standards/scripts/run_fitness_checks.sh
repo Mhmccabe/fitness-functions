@@ -49,7 +49,7 @@ data = json.load(open('$SEMGREP_RESULTS'))
 print(len(data.get('results', [])))
 ")
 
-if [ "$VIOLATIONS" -gt 0 ]; then
+if [[ "$VIOLATIONS" -gt 0 ]]; then
   echo "  FAILED: $VIOLATIONS violation(s) found in production files"
   semgrep --config .semgrep/logging-rules.yml src/ --exclude="*-bad.js" --quiet 2>&1 || true
   PASSED=false
@@ -67,7 +67,7 @@ BAD_VIOLATIONS=$(semgrep \
   --json 2>/dev/null \
   | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('results', [])))")
 
-if [ "$BAD_VIOLATIONS" -gt 0 ]; then
+if [[ "$BAD_VIOLATIONS" -gt 0 ]]; then
   echo "  ✓ Bad examples trigger $BAD_VIOLATIONS violations as expected"
 else
   echo "  ⚠ Warning: Bad examples trigger no violations — rules may not be working"
@@ -93,7 +93,7 @@ fi
 echo ""
 
 # ── Step 3: sonar-scanner ────────────────────────────────────────────────────
-if command -v sonar-scanner &> /dev/null && [ -n "${SONAR_URL:-}" ]; then
+if command -v sonar-scanner &> /dev/null && [ -n "${SONAR_URL:-}" ]]; then
   echo ">>> Step 3: sonar-scanner"
   sonar-scanner
   echo ""
@@ -104,7 +104,7 @@ fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 echo "============================================================"
-if [ "$PASSED" = true ]; then
+if [[ "$PASSED" = true ]]; then
   echo " RESULT: ALL CHECKS PASSED"
   exit 0
 else

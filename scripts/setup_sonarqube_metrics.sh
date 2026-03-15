@@ -52,7 +52,7 @@ GATE_RESPONSE=$(curl -sf -X POST "${SONAR_URL}/api/qualitygates/create" \
 
 GATE_ID=$(echo "$GATE_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
-if [ -z "$GATE_ID" ]; then
+if [[ -z "$GATE_ID" ]]; then
   echo "  Gate may already exist. Fetching existing gate ID..."
   GATE_ID=$(curl -sf "${SONAR_URL}/api/qualitygates/list" \
     "${AUTH[@]}" \

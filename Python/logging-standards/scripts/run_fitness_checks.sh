@@ -52,7 +52,7 @@ results = data.get('results', [])
 print(len(results))
 ")
 
-if [ "$VIOLATIONS" -gt 0 ]; then
+if [[ "$VIOLATIONS" -gt 0 ]]; then
   echo "  FAILED: $VIOLATIONS violation(s) found"
   # Print human-readable output for the CI log
   semgrep --config .semgrep/logging-rules.yml src/ --quiet 2>&1 || true
@@ -90,7 +90,7 @@ fi
 echo ""
 
 # ── Step 3: Push metrics to SonarQube ────────────────────────────────────────
-if [ -n "${SONAR_PROJECT_KEY:-}" ]; then
+if [[ -n "${SONAR_PROJECT_KEY:-}" ]]; then
   echo ">>> Step 3: Pushing metrics to SonarQube"
   echo ""
   python3 scripts/push_logging_metrics.py || PASSED=false
@@ -101,7 +101,7 @@ else
 fi
 
 # ── Step 4: sonar-scanner ────────────────────────────────────────────────────
-if command -v sonar-scanner &> /dev/null && [ -n "${SONAR_URL:-}" ]; then
+if command -v sonar-scanner &> /dev/null && [ -n "${SONAR_URL:-}" ]]; then
   echo ">>> Step 4: sonar-scanner"
   echo ""
   sonar-scanner
@@ -113,7 +113,7 @@ fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 echo "============================================================"
-if [ "$PASSED" = true ]; then
+if [[ "$PASSED" = true ]]; then
   echo " RESULT: ALL CHECKS PASSED"
   exit 0
 else
