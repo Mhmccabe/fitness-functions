@@ -1,0 +1,116 @@
+name: Fitness Functions — Java Logging Standards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Java/logging-standards/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Java/logging-standards/**'
+  schedule:
+    # Weekly full scan every Monday at 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: Java/logging-standards
+
+jobs:
+  fitness-functions:
+    name: Logging Standards Fitness Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Install semgrep
+        run: pip install semgrep
+
+      # ── Layer 1: Semgrep — Logging observability standards ─────────────────
+      - name: Semgrep — logging rules
+        run: |
+          semgrep \
+            --config .semgrep/logging-rules.yml \
+            src/main/ \
+            --exclude="*Bad.java" \
+            --json \
+            --output semgrep-results.json \
+            --quiet
+          VIOLATIONS=$(python3 -c "
+          import json, sys
+          data = json.load(open('semgrep-results.json'))
+          count = len(data.get('results', []))
+          print(count)
+          sys.exit(1 if count > 0 else 0)
+          ")
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results-java
+          path: Java/logging-standards/semgrep-results.json
+
+      # ── Layer 2: Maven build and tests ─────────────────────────────────────
+      - name: Build and test with Maven
+        run: mvn clean verify
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-java
+          path: Java/logging-standards/target/site/jacoco/jacoco.xml
+
+      # ── Layer 3: SonarQube static analysis ────────────────────────────────
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v3
+        with:
+          projectBaseDir: Java/logging-standards
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      # ── Layer 4: GitHub Actions job summary ───────────────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          VIOLATIONS=$(python3 -c "
+          import json, sys
+          try:
+              data = json.load(open('semgrep-results.json'))
+              print(len(data.get('results', [])))
+          except Exception:
+              print('N/A')
+          ")
+
+          if [ "$VIOLATIONS" = "0" ]; then
+            VIOLATIONS_STATUS="✅ 0"
+          else
+            VIOLATIONS_STATUS="❌ $VIOLATIONS"
+          fi
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Fitness Function — Java Logging Standards
+
+          | Check | Result |
+          |---|---|
+          | Logging violations (semgrep) | ${VIOLATIONS_STATUS} |
+
+          **Commit:** \`${{ github.sha }}\`
+          **Branch:** \`${{ github.ref_name }}\`
+          **Run:** [${{ github.run_number }}](${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
