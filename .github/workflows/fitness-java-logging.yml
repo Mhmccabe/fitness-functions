@@ -18,6 +18,10 @@ defaults:
   run:
     working-directory: Java/logging-standards
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   fitness-functions:
     name: Logging Standards Fitness Check

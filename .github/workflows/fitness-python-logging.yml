@@ -19,6 +19,10 @@ defaults:
   run:
     working-directory: Python/logging-standards
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   fitness-functions:
     name: Logging Standards Fitness Check
