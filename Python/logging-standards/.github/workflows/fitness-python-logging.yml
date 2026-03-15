@@ -13,6 +13,7 @@ on:
     # Weekly full scan every Monday at 06:00 UTC
     # Builds SonarQube trend history even during quiet periods
     - cron: '0 6 * * 1'
+  workflow_dispatch:
 
 defaults:
   run:
