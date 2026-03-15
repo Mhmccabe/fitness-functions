@@ -97,7 +97,7 @@ fi
 echo ""
 
 # ── Step 3: sonar-scanner ────────────────────────────────────────────────────
-if command -v sonar-scanner &> /dev/null && [ -n "${SONAR_URL:-}" ]]; then
+if command -v sonar-scanner &> /dev/null && [[ -n "${SONAR_URL:-}" ]]; then
   echo ">>> Step 3: sonar-scanner"
   sonar-scanner
   echo ""
