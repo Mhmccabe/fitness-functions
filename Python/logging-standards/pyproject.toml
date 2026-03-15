@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "fitness-functions-python-logging"
@@ -25,7 +25,7 @@ addopts = "--tb=short"
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["tests/*", "scripts/*"]
+omit = ["tests/*", "scripts/*", "src/app_bad.py", "src/app_good.py"]
 
 [tool.coverage.report]
 show_missing = true
