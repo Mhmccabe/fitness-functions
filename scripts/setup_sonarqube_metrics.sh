@@ -67,7 +67,7 @@ echo "=== Adding quality gate conditions ==="
 
 add_condition() {
   local metric="$1" op="$2" error="$3" label="$4"
-  echo "  → ${label}: ${metric} ${op} ${error}"
+  echo "  → ${label}: ${metric} ${op} ${error}" >&2
   curl -sf -X POST "${SONAR_URL}/api/qualitygates/create_condition" \
     "${AUTH[@]}" \
     --data "gateId=${GATE_ID}&metric=${metric}&op=${op}&error=${error}" \
