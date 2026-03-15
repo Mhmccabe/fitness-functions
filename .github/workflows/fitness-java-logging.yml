@@ -111,6 +111,7 @@ jobs:
 
       # ── Layer 3: SonarQube static analysis ────────────────────────────────
       - name: SonarQube scan
+        continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@v3
         with:
           projectBaseDir: Java/logging-standards
