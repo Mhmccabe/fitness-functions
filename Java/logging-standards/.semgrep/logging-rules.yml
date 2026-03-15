@@ -1,0 +1,99 @@
+rules:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 1: No java.util.logging (JUL)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-jul-import
+    languages: [java]
+    severity: ERROR
+    message: >
+      Do not use java.util.logging. Use SLF4J (org.slf4j.Logger) instead.
+      JUL produces a different log format and cannot be processed consistently
+      by your log aggregation platform.
+      Replace: import java.util.logging.Logger;
+      With:    import org.slf4j.Logger; import org.slf4j.LoggerFactory;
+    pattern: import java.util.logging.$X;
+    paths:
+      include:
+        - src/main/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 2: No direct Logback imports
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-direct-logback
+    languages: [java]
+    severity: ERROR
+    message: >
+      Do not import Logback classes directly. Use the SLF4J facade only.
+      Direct Logback imports couple your code to the implementation and
+      prevent swapping the logging backend without code changes.
+      Replace: import ch.qos.logback.classic.Logger;
+      With:    import org.slf4j.Logger;
+    pattern: import ch.qos.logback.$X;
+    paths:
+      include:
+        - src/main/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 3: No string concatenation in log calls
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-string-concat-in-log
+    languages: [java]
+    severity: ERROR
+    message: >
+      Do not use string concatenation in log calls. Use SLF4J parameterised
+      {} placeholders instead. String concatenation is evaluated eagerly even
+      when the log level is suppressed, wasting CPU on string allocation.
+      Replace: logger.info("Processing order " + orderId);
+      With:    logger.info("Processing order {}", orderId);
+    patterns:
+      - pattern: $LOGGER.trace($A + $B, ...)
+      - pattern: $LOGGER.debug($A + $B, ...)
+      - pattern: $LOGGER.info($A + $B, ...)
+      - pattern: $LOGGER.warn($A + $B, ...)
+      - pattern: $LOGGER.error($A + $B, ...)
+    paths:
+      include:
+        - src/main/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 4: Logger must be named after its own class
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: logger-must-use-own-class
+    languages: [java]
+    severity: WARNING
+    message: >
+      The logger should be typed to its own class: LoggerFactory.getLogger(MyClass.class).
+      Using a different class name produces misleading source attribution in log output.
+    patterns:
+      - pattern: |
+          class $CLASS {
+            ...
+            LoggerFactory.getLogger($OTHER.class)
+            ...
+          }
+      - pattern-not: |
+          class $CLASS {
+            ...
+            LoggerFactory.getLogger($CLASS.class)
+            ...
+          }
+    paths:
+      include:
+        - src/main/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 5: No System.out.println or System.err.println
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-system-out-println
+    languages: [java]
+    severity: ERROR
+    message: >
+      Do not use System.out.println or System.err.println in production code.
+      Use an SLF4J logger instead so output goes through the configured
+      appender with proper log level and structured fields.
+    patterns:
+      - pattern: System.out.println(...)
+      - pattern: System.err.println(...)
+    paths:
+      include:
+        - src/main/

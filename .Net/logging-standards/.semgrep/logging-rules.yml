@@ -1,0 +1,95 @@
+rules:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 1: No Console.WriteLine or Console.Write
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-console-writeline
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Do not use Console.WriteLine() or Console.Write() in production code.
+      Use ILogger<T> instead. Console output bypasses structured logging,
+      log levels, and your log aggregation pipeline.
+      Replace: Console.WriteLine($"Processing order {orderId}");
+      With:    _logger.LogInformation("order.processing_started {OrderId}", orderId);
+    patterns:
+      - pattern: Console.WriteLine(...)
+      - pattern: Console.Write(...)
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 2: No string interpolation in log calls
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-string-interpolation-in-log
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Do not use string interpolation ($"...") in log calls. Use structured
+      message templates with {Property} placeholders instead. String interpolation
+      is evaluated eagerly and produces free text that cannot be queried as fields.
+      Replace: _logger.LogInformation($"Processing order {orderId}");
+      With:    _logger.LogInformation("order.processing_started {OrderId}", orderId);
+    patterns:
+      - pattern: $LOGGER.LogTrace($"...", ...)
+      - pattern: $LOGGER.LogDebug($"...", ...)
+      - pattern: $LOGGER.LogInformation($"...", ...)
+      - pattern: $LOGGER.LogWarning($"...", ...)
+      - pattern: $LOGGER.LogError($"...", ...)
+      - pattern: $LOGGER.LogCritical($"...", ...)
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 3: No string concatenation in log calls
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-string-concat-in-log
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Do not use string concatenation in log calls. Use structured message
+      templates with {Property} placeholders.
+      Replace: _logger.LogInformation("Order " + orderId + " started");
+      With:    _logger.LogInformation("order.processing_started {OrderId}", orderId);
+    patterns:
+      - pattern: $LOGGER.LogTrace($A + $B, ...)
+      - pattern: $LOGGER.LogDebug($A + $B, ...)
+      - pattern: $LOGGER.LogInformation($A + $B, ...)
+      - pattern: $LOGGER.LogWarning($A + $B, ...)
+      - pattern: $LOGGER.LogError($A + $B, ...)
+      - pattern: $LOGGER.LogCritical($A + $B, ...)
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 4: ILogger must be injected — no direct instantiation
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-direct-logger-instantiation
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Do not instantiate loggers directly. ILogger<T> must be injected via
+      constructor dependency injection. Direct instantiation bypasses the
+      DI-configured provider (Serilog) and its enrichers.
+      Replace: var logger = new Logger<OrderService>(new LoggerFactory());
+      With:    constructor(ILogger<OrderService> logger) { _logger = logger; }
+    pattern: new Logger<$T>(...)
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 5: No Debug.WriteLine in production code
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-debug-writeline
+    languages: [csharp]
+    severity: WARNING
+    message: >
+      Do not use Debug.WriteLine() in production code. Use ILogger<T>.LogDebug()
+      instead so output goes through the configured log provider.
+    pattern: Debug.WriteLine(...)
+    paths:
+      include:
+        - src/

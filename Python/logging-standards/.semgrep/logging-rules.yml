@@ -1,0 +1,97 @@
+rules:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 1: No print() in production code
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-print-statement
+    languages: [python]
+    severity: ERROR
+    message: >
+      Use structlog instead of print() in production code.
+      print() bypasses log levels, structured fields, and log aggregation.
+      Replace with: log.info("event.name", key=value)
+    patterns:
+      - pattern: print(...)
+    paths:
+      include:
+        - src/
+      exclude:
+        - scripts/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 2: No stdlib logging import
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-bare-logging-import
+    languages: [python]
+    severity: ERROR
+    message: >
+      Do not use the stdlib logging module directly. Use structlog instead.
+      structlog provides structured, context-rich log records compatible with
+      your log aggregation platform.
+      Replace: import logging
+      With:    import structlog; log = structlog.get_logger()
+    pattern: import logging
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 3: No f-strings in log calls
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-fstring-in-log
+    languages: [python]
+    severity: ERROR
+    message: >
+      Do not use f-strings or % formatting in log calls. Pass structured key=value
+      pairs instead. F-strings are evaluated eagerly (wasted CPU when log level is
+      suppressed) and produce unqueryable free-text in log aggregation.
+      Replace: log.info(f"Order {order_id} processed")
+      With:    log.info("order.processed", order_id=order_id)
+    patterns:
+      - pattern: $LOG.$METHOD(f"...", ...)
+      - pattern: $LOG.$METHOD("..." % (...), ...)
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 4: No log-and-raise (log the exception OR raise it, not both)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-log-and-raise
+    languages: [python]
+    severity: WARNING
+    message: >
+      Do not log and re-raise the same exception. This produces duplicate log
+      entries as the exception propagates up the call stack.
+      Either log the exception and handle it, or raise it for the caller to handle.
+      If you need context, use raise ... from exc to chain exceptions.
+    patterns:
+      - pattern: |
+          try:
+            ...
+          except ...:
+            $LOG.$METHOD(...)
+            raise
+      - pattern: |
+          try:
+            ...
+          except ... as $E:
+            $LOG.$METHOD(...)
+            raise $E
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 5: No logging.getLogger() — must use structlog
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-logging-getlogger
+    languages: [python]
+    severity: ERROR
+    message: >
+      Do not call logging.getLogger(). Use structlog.get_logger() instead.
+      Replace: logger = logging.getLogger(__name__)
+      With:    log = structlog.get_logger()
+    pattern: logging.getLogger(...)
+    paths:
+      include:
+        - src/

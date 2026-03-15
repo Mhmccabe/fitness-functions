@@ -1,0 +1,85 @@
+rules:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 1: No console.log
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-console-log
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Do not use console.log() in production code. Use the shared pino logger
+      from logger.js instead. console.log() produces unstructured output with
+      no log level, no correlation ID, and no JSON fields for log aggregation.
+      Replace: console.log('Processing order', orderId)
+      With:    log.info({ orderId }, 'order.processing_started')
+    pattern: console.log(...)
+    paths:
+      include:
+        - src/
+      exclude:
+        - scripts/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 2: No console.warn
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-console-warn
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Do not use console.warn(). Use log.warn({ key: value }, 'event.name').
+    pattern: console.warn(...)
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 3: No console.error
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-console-error
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Do not use console.error(). Use log.error({ err, key: value }, 'event.name').
+      Pino serialises Error objects including the stack trace as a structured field.
+    pattern: console.error(...)
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 4: No template literals as the log message string
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-template-literal-in-log
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Do not use template literals as the log message. Pass structured fields
+      as the first argument object and a static event name as the message.
+      Replace: log.info(`Processing order ${orderId}`)
+      With:    log.info({ orderId }, 'order.processing_started')
+    patterns:
+      - pattern: $LOG.trace(`...`, ...)
+      - pattern: $LOG.debug(`...`, ...)
+      - pattern: $LOG.info(`...`, ...)
+      - pattern: $LOG.warn(`...`, ...)
+      - pattern: $LOG.error(`...`, ...)
+    paths:
+      include:
+        - src/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Rule 5: Logger must be imported from the shared factory
+  # ─────────────────────────────────────────────────────────────────────────────
+  - id: no-raw-pino-require
+    languages: [javascript]
+    severity: ERROR
+    message: >
+      Do not require pino directly. Use the shared logger factory from ./logger.js
+      (or the equivalent path) so all loggers share the same configuration:
+      serialisers, redaction rules, log level from environment, and base fields.
+      Replace: const pino = require('pino'); const log = pino();
+      With:    const { createLogger } = require('./logger');
+               const log = createLogger({ service: 'order-service' });
+    pattern: require('pino')
+    paths:
+      include:
+        - src/

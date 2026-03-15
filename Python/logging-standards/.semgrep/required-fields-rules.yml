@@ -1,0 +1,205 @@
+rules:
+  # =============================================================================
+  # BASELINE — domain-specific required fields
+  #
+  # correlation_id and service are enforced structurally via the structlog
+  # processor chain in logger config (not pattern-matchable per call site).
+  # These rules enforce required fields on named event categories.
+  # =============================================================================
+
+  - id: error-event-missing-reason
+    languages: [python]
+    severity: ERROR
+    message: >
+      log.error() and log.warning() calls must include a 'reason' or 'exc_info'
+      field so operators can filter and alert on specific failure modes.
+      Replace: log.error("payment.failed")
+      With:    log.error("payment.failed", reason="card_declined")
+               log.error("payment.failed", exc_info=True)
+    patterns:
+      - pattern-either:
+          - pattern: $LOG.error($MSG, ...)
+          - pattern: $LOG.warning($MSG, ...)
+      - pattern-not: $LOG.error($MSG, ..., reason=..., ...)
+      - pattern-not: $LOG.error($MSG, ..., exc_info=..., ...)
+      - pattern-not: $LOG.warning($MSG, ..., reason=..., ...)
+      - pattern-not: $LOG.warning($MSG, ..., exc_info=..., ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # HTTP REQUEST WORKLOAD
+  # Required fields: request_id, method, path, status_code, duration_ms
+  # Triggered on any event whose name starts with "request."
+  # =============================================================================
+
+  - id: http-event-missing-request-id
+    languages: [python]
+    severity: ERROR
+    message: >
+      Events prefixed 'request.' must include a 'request_id' field so all log
+      lines for one HTTP request can be correlated in your log aggregator.
+      Add: request_id=request_id (bound at the handler boundary)
+    patterns:
+      - pattern: $LOG.$M("request.$EVT", ...)
+      - pattern-not: $LOG.$M("request.$EVT", ..., request_id=..., ...)
+    paths:
+      include:
+        - src/
+
+  - id: http-request-completed-missing-status-code
+    languages: [python]
+    severity: ERROR
+    message: >
+      'request.completed' events must include 'status_code' and 'duration_ms'
+      so you can build latency/error-rate dashboards without parsing free text.
+      Add: status_code=response.status_code, duration_ms=elapsed
+    patterns:
+      - pattern: $LOG.$M("request.completed", ...)
+      - pattern-not: $LOG.$M("request.completed", ..., status_code=..., ...)
+    paths:
+      include:
+        - src/
+
+  - id: http-request-completed-missing-duration
+    languages: [python]
+    severity: ERROR
+    message: >
+      'request.completed' events must include 'duration_ms' for latency tracking.
+      Add: duration_ms=elapsed
+    patterns:
+      - pattern: $LOG.$M("request.completed", ...)
+      - pattern-not: $LOG.$M("request.completed", ..., duration_ms=..., ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # BATCH JOB WORKLOAD
+  # Required fields: job_id, job_name, record_count, duration_ms, status
+  # Triggered on events prefixed "job."
+  # =============================================================================
+
+  - id: batch-event-missing-job-id
+    languages: [python]
+    severity: ERROR
+    message: >
+      Events prefixed 'job.' must include 'job_id' so runs can be correlated
+      with scheduler records and alerts reference a specific execution.
+      Add: job_id=job_id
+    patterns:
+      - pattern: $LOG.$M("job.$EVT", ...)
+      - pattern-not: $LOG.$M("job.$EVT", ..., job_id=..., ...)
+    paths:
+      include:
+        - src/
+
+  - id: batch-job-completed-missing-record-count
+    languages: [python]
+    severity: ERROR
+    message: >
+      'job.completed' events must include 'record_count' and 'duration_ms'
+      to track throughput and detect anomalies (e.g. zero records processed).
+      Add: record_count=processed, duration_ms=elapsed
+    patterns:
+      - pattern: $LOG.$M("job.completed", ...)
+      - pattern-not: $LOG.$M("job.completed", ..., record_count=..., ...)
+    paths:
+      include:
+        - src/
+
+  - id: batch-job-completed-missing-duration
+    languages: [python]
+    severity: ERROR
+    message: >
+      'job.completed' events must include 'duration_ms' for job duration tracking.
+    patterns:
+      - pattern: $LOG.$M("job.completed", ...)
+      - pattern-not: $LOG.$M("job.completed", ..., duration_ms=..., ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # ETL PIPELINE WORKLOAD
+  # Required fields: pipeline_id, source, destination, rows_in, rows_out, error_count
+  # Triggered on events prefixed "pipeline."
+  # =============================================================================
+
+  - id: etl-event-missing-pipeline-id
+    languages: [python]
+    severity: ERROR
+    message: >
+      Events prefixed 'pipeline.' must include 'pipeline_id' to correlate
+      all stages of one pipeline run in your observability platform.
+      Add: pipeline_id=pipeline_id
+    patterns:
+      - pattern: $LOG.$M("pipeline.$EVT", ...)
+      - pattern-not: $LOG.$M("pipeline.$EVT", ..., pipeline_id=..., ...)
+    paths:
+      include:
+        - src/
+
+  - id: etl-pipeline-completed-missing-row-counts
+    languages: [python]
+    severity: ERROR
+    message: >
+      'pipeline.completed' events must include 'rows_in', 'rows_out', and
+      'error_count' so data quality can be tracked automatically.
+      Without these, silent data loss goes undetected.
+      Add: rows_in=source_count, rows_out=dest_count, error_count=errors
+    patterns:
+      - pattern: $LOG.$M("pipeline.completed", ...)
+      - pattern-not: $LOG.$M("pipeline.completed", ..., rows_in=..., ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # ASYNC / QUEUE WORKER WORKLOAD
+  # Required fields: message_id, queue_name, attempt, duration_ms
+  # Triggered on events prefixed "message."
+  # =============================================================================
+
+  - id: async-event-missing-message-id
+    languages: [python]
+    severity: ERROR
+    message: >
+      Events prefixed 'message.' must include 'message_id' so a specific
+      queue message can be traced through retries and DLQ moves.
+      Add: message_id=msg.message_id
+    patterns:
+      - pattern: $LOG.$M("message.$EVT", ...)
+      - pattern-not: $LOG.$M("message.$EVT", ..., message_id=..., ...)
+    paths:
+      include:
+        - src/
+
+  - id: async-event-missing-queue-name
+    languages: [python]
+    severity: ERROR
+    message: >
+      Events prefixed 'message.' must include 'queue_name' for filtering
+      and alerting per queue in a multi-queue service.
+      Add: queue_name=queue_name
+    patterns:
+      - pattern: $LOG.$M("message.$EVT", ...)
+      - pattern-not: $LOG.$M("message.$EVT", ..., queue_name=..., ...)
+    paths:
+      include:
+        - src/
+
+  - id: async-message-processed-missing-attempt
+    languages: [python]
+    severity: WARNING
+    message: >
+      'message.processed' events should include 'attempt' (1 = first try)
+      so retry storms and poison messages can be detected from log data alone.
+      Add: attempt=msg.approximate_receive_count
+    patterns:
+      - pattern: $LOG.$M("message.processed", ...)
+      - pattern-not: $LOG.$M("message.processed", ..., attempt=..., ...)
+    paths:
+      include:
+        - src/

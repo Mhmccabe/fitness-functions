@@ -1,0 +1,31 @@
+{
+  "name": "fitness-functions-node-logging",
+  "version": "0.1.0",
+  "description": "Node.js logging standards fitness function example",
+  "main": "src/order-service-good.js",
+  "scripts": {
+    "test": "jest --coverage",
+    "lint:logging": "semgrep --config .semgrep/logging-rules.yml src/ --quiet",
+    "fitness": "./scripts/run_fitness_checks.sh"
+  },
+  "dependencies": {
+    "pino": "^9.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/*-bad.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 80
+      }
+    },
+    "coverageReporters": ["text", "lcov"]
+  }
+}

@@ -1,0 +1,158 @@
+rules:
+  # =============================================================================
+  # BASELINE — error events must include exception or Reason placeholder
+  # =============================================================================
+
+  - id: error-log-missing-exception-or-reason
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      LogError() calls must either pass an Exception as the first argument or
+      include a '{Reason}' placeholder in the message template.
+      Without one of these, the error log carries no actionable context.
+      Replace: _logger.LogError("payment.failed");
+      With:    _logger.LogError(ex, "payment.failed");
+               _logger.LogError("payment.failed {Reason}", reason);
+    patterns:
+      - pattern: $LOGGER.LogError($MSG)
+      - pattern-not: $LOGGER.LogError($MSG, ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # HTTP REQUEST WORKLOAD
+  # Required placeholders: {RequestId}, {Method}, {Path}, {StatusCode}, {DurationMs}
+  # =============================================================================
+
+  - id: http-event-missing-request-id
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Events prefixed 'request.' must include a '{RequestId}' placeholder so all
+      log lines for one HTTP request can be correlated.
+      Add: _logger.$M("request.$EVT {RequestId} ...", requestId, ...)
+    patterns:
+      - pattern: $LOGGER.$M("request.$EVT ...", ...)
+      - pattern-not: $LOGGER.$M("request.$EVT ... {RequestId} ...", ...)
+    paths:
+      include:
+        - src/
+
+  - id: http-request-completed-missing-status-code
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      'request.completed' events must include '{StatusCode}' and '{DurationMs}'
+      for latency and error-rate dashboards.
+    patterns:
+      - pattern: $LOGGER.$M("request.completed ...", ...)
+      - pattern-not: $LOGGER.$M("request.completed ... {StatusCode} ...", ...)
+    paths:
+      include:
+        - src/
+
+  - id: http-request-completed-missing-duration
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      'request.completed' events must include '{DurationMs}' for latency tracking.
+    patterns:
+      - pattern: $LOGGER.$M("request.completed ...", ...)
+      - pattern-not: $LOGGER.$M("request.completed ... {DurationMs} ...", ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # BATCH JOB WORKLOAD
+  # Required placeholders: {JobId}, {JobName}, {RecordCount}, {DurationMs}, {Status}
+  # =============================================================================
+
+  - id: batch-event-missing-job-id
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Events prefixed 'job.' must include a '{JobId}' placeholder.
+      Add: _logger.$M("job.$EVT {JobId} ...", jobId, ...)
+    patterns:
+      - pattern: $LOGGER.$M("job.$EVT ...", ...)
+      - pattern-not: $LOGGER.$M("job.$EVT ... {JobId} ...", ...)
+    paths:
+      include:
+        - src/
+
+  - id: batch-job-completed-missing-record-count
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      'job.completed' events must include '{RecordCount}' and '{DurationMs}'
+      to detect anomalies such as zero records processed.
+    patterns:
+      - pattern: $LOGGER.$M("job.completed ...", ...)
+      - pattern-not: $LOGGER.$M("job.completed ... {RecordCount} ...", ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # ETL PIPELINE WORKLOAD
+  # Required placeholders: {PipelineId}, {Source}, {Destination}, {RowsIn}, {RowsOut}, {ErrorCount}
+  # =============================================================================
+
+  - id: etl-event-missing-pipeline-id
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Events prefixed 'pipeline.' must include a '{PipelineId}' placeholder.
+      Add: _logger.$M("pipeline.$EVT {PipelineId} ...", pipelineId, ...)
+    patterns:
+      - pattern: $LOGGER.$M("pipeline.$EVT ...", ...)
+      - pattern-not: $LOGGER.$M("pipeline.$EVT ... {PipelineId} ...", ...)
+    paths:
+      include:
+        - src/
+
+  - id: etl-pipeline-completed-missing-row-counts
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      'pipeline.completed' events must include '{RowsIn}', '{RowsOut}', and
+      '{ErrorCount}' to detect silent data loss automatically.
+    patterns:
+      - pattern: $LOGGER.$M("pipeline.completed ...", ...)
+      - pattern-not: $LOGGER.$M("pipeline.completed ... {RowsIn} ...", ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # ASYNC / QUEUE WORKER WORKLOAD
+  # Required placeholders: {MessageId}, {QueueName}, {Attempt}, {DurationMs}
+  # =============================================================================
+
+  - id: async-event-missing-message-id
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Events prefixed 'message.' must include a '{MessageId}' placeholder so a
+      queue message can be traced through retries and DLQ moves.
+      Add: _logger.$M("message.$EVT {MessageId} ...", messageId, ...)
+    patterns:
+      - pattern: $LOGGER.$M("message.$EVT ...", ...)
+      - pattern-not: $LOGGER.$M("message.$EVT ... {MessageId} ...", ...)
+    paths:
+      include:
+        - src/
+
+  - id: async-event-missing-queue-name
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Events prefixed 'message.' must include '{QueueName}' for per-queue alerting.
+    patterns:
+      - pattern: $LOGGER.$M("message.$EVT ...", ...)
+      - pattern-not: $LOGGER.$M("message.$EVT ... {QueueName} ...", ...)
+    paths:
+      include:
+        - src/

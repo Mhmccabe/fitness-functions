@@ -1,0 +1,113 @@
+name: Fitness Functions — Python Logging Standards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Python/logging-standards/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Python/logging-standards/**'
+  schedule:
+    # Weekly full scan every Monday at 06:00 UTC
+    # Builds SonarQube trend history even during quiet periods
+    - cron: '0 6 * * 1'
+
+defaults:
+  run:
+    working-directory: Python/logging-standards
+
+jobs:
+  fitness-functions:
+    name: Logging Standards Fitness Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history needed for SonarQube "new code" detection
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      # ── Layer 1: Semgrep — Logging observability standards ─────────────────
+      - name: Semgrep — logging rules
+        run: |
+          semgrep \
+            --config .semgrep/logging-rules.yml \
+            src/ \
+            --json \
+            --output semgrep-results.json \
+            --quiet
+          VIOLATIONS=$(python3 -c "
+          import json, sys
+          data = json.load(open('semgrep-results.json'))
+          count = len(data.get('results', []))
+          print(count)
+          sys.exit(1 if count > 0 else 0)
+          ")
+        # Always save the results for the metrics push step
+        continue-on-error: false
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: Python/logging-standards/semgrep-results.json
+
+      # ── Layer 2: Tests with coverage ───────────────────────────────────────
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=src \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --tb=short
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: Python/logging-standards/coverage.xml
+
+      # ── Layer 3: SonarQube static analysis ────────────────────────────────
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v3
+        with:
+          projectBaseDir: Python/logging-standards
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      # ── Layer 4: Push custom metrics ──────────────────────────────────────
+      # Runs after sonar-scanner so the analysis already exists on the server.
+      # Violation count and coverage are stored as custom measures and can
+      # be gated on and trended over time.
+      - name: Push logging metrics to SonarQube
+        env:
+          SONAR_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: fitness-functions-python-logging
+        run: python3 scripts/push_logging_metrics.py
+
+      # ── Layer 5: Quality gate verdict ─────────────────────────────────────
+      # sonar.qualitygate.wait=true in sonar-project.properties means the
+      # sonar-scanner step already blocks on the gate. This step makes the
+      # gate status explicit in the GitHub Actions summary.
+      - name: Check quality gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}

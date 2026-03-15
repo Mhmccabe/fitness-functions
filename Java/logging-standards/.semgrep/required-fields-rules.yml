@@ -1,0 +1,159 @@
+rules:
+  # =============================================================================
+  # BASELINE — error events must include exception or reason
+  # =============================================================================
+
+  - id: error-log-missing-exception-or-reason
+    languages: [java]
+    severity: ERROR
+    message: >
+      log.error() calls should pass an exception as the last argument OR include
+      a 'reason={}' placeholder in the message template. Without one of these,
+      the error log carries no actionable context.
+      Replace: log.error("payment.failed");
+      With:    log.error("payment.failed reason={}", reason);
+               log.error("payment.failed", exception);
+    patterns:
+      - pattern: $LOG.error($MSG)
+      - pattern-not: $LOG.error($MSG, ...)
+    paths:
+      include:
+        - src/main/
+
+  # =============================================================================
+  # HTTP REQUEST WORKLOAD
+  # Required fields in message template: requestId, method, path, statusCode, durationMs
+  # =============================================================================
+
+  - id: http-event-missing-request-id
+    languages: [java]
+    severity: ERROR
+    message: >
+      Events prefixed 'request.' must include 'requestId={}' in the message
+      template so all log lines for one HTTP request can be correlated.
+      Add: log.$M("request.$EVT requestId={} ...", requestId, ...)
+    patterns:
+      - pattern: $LOG.$M("request.$EVT ...", ...)
+      - pattern-not: $LOG.$M("request.$EVT ... requestId={} ...", ...)
+    paths:
+      include:
+        - src/main/
+
+  - id: http-request-completed-missing-status-code
+    languages: [java]
+    severity: ERROR
+    message: >
+      'request.completed' events must include 'statusCode={}' and 'durationMs={}'
+      for latency/error-rate dashboards.
+      Add: log.$M("request.completed ... statusCode={} durationMs={}", ..., statusCode, durationMs)
+    patterns:
+      - pattern: $LOG.$M("request.completed ...", ...)
+      - pattern-not: $LOG.$M("request.completed ... statusCode={} ...", ...)
+    paths:
+      include:
+        - src/main/
+
+  - id: http-request-completed-missing-duration
+    languages: [java]
+    severity: ERROR
+    message: >
+      'request.completed' events must include 'durationMs={}' for latency tracking.
+    patterns:
+      - pattern: $LOG.$M("request.completed ...", ...)
+      - pattern-not: $LOG.$M("request.completed ... durationMs={} ...", ...)
+    paths:
+      include:
+        - src/main/
+
+  # =============================================================================
+  # BATCH JOB WORKLOAD
+  # Required fields in message template: jobId, jobName, recordCount, durationMs, status
+  # =============================================================================
+
+  - id: batch-event-missing-job-id
+    languages: [java]
+    severity: ERROR
+    message: >
+      Events prefixed 'job.' must include 'jobId={}' in the message template.
+      Add: log.$M("job.$EVT jobId={} ...", jobId, ...)
+    patterns:
+      - pattern: $LOG.$M("job.$EVT ...", ...)
+      - pattern-not: $LOG.$M("job.$EVT ... jobId={} ...", ...)
+    paths:
+      include:
+        - src/main/
+
+  - id: batch-job-completed-missing-record-count
+    languages: [java]
+    severity: ERROR
+    message: >
+      'job.completed' events must include 'recordCount={}' and 'durationMs={}'
+      to track throughput and detect anomalies (e.g. zero records processed).
+    patterns:
+      - pattern: $LOG.$M("job.completed ...", ...)
+      - pattern-not: $LOG.$M("job.completed ... recordCount={} ...", ...)
+    paths:
+      include:
+        - src/main/
+
+  # =============================================================================
+  # ETL PIPELINE WORKLOAD
+  # Required fields: pipelineId, source, destination, rowsIn, rowsOut, errorCount
+  # =============================================================================
+
+  - id: etl-event-missing-pipeline-id
+    languages: [java]
+    severity: ERROR
+    message: >
+      Events prefixed 'pipeline.' must include 'pipelineId={}' in the message template.
+      Add: log.$M("pipeline.$EVT pipelineId={} ...", pipelineId, ...)
+    patterns:
+      - pattern: $LOG.$M("pipeline.$EVT ...", ...)
+      - pattern-not: $LOG.$M("pipeline.$EVT ... pipelineId={} ...", ...)
+    paths:
+      include:
+        - src/main/
+
+  - id: etl-pipeline-completed-missing-row-counts
+    languages: [java]
+    severity: ERROR
+    message: >
+      'pipeline.completed' events must include 'rowsIn={}', 'rowsOut={}', and
+      'errorCount={}' to detect silent data loss automatically.
+    patterns:
+      - pattern: $LOG.$M("pipeline.completed ...", ...)
+      - pattern-not: $LOG.$M("pipeline.completed ... rowsIn={} ...", ...)
+    paths:
+      include:
+        - src/main/
+
+  # =============================================================================
+  # ASYNC / QUEUE WORKER WORKLOAD
+  # Required fields: messageId, queueName, attempt, durationMs
+  # =============================================================================
+
+  - id: async-event-missing-message-id
+    languages: [java]
+    severity: ERROR
+    message: >
+      Events prefixed 'message.' must include 'messageId={}' in the message template
+      so a queue message can be traced through retries and DLQ moves.
+      Add: log.$M("message.$EVT messageId={} ...", messageId, ...)
+    patterns:
+      - pattern: $LOG.$M("message.$EVT ...", ...)
+      - pattern-not: $LOG.$M("message.$EVT ... messageId={} ...", ...)
+    paths:
+      include:
+        - src/main/
+
+  - id: async-event-missing-queue-name
+    languages: [java]
+    severity: ERROR
+    message: >
+      Events prefixed 'message.' must include 'queueName={}' for per-queue alerting.
+    patterns:
+      - pattern: $LOG.$M("message.$EVT ...", ...)
+      - pattern-not: $LOG.$M("message.$EVT ... queueName={} ...", ...)
+    paths:
+      include:
+        - src/main/

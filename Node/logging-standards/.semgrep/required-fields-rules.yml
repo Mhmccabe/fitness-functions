@@ -1,0 +1,159 @@
+rules:
+  # =============================================================================
+  # BASELINE — error events must include err or reason field
+  # =============================================================================
+
+  - id: error-event-missing-err-or-reason
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      log.error() calls must include an 'err' field (Error object, serialised by
+      pino's err serialiser) or a 'reason' string field.
+      Replace: log.error({}, 'payment.failed')
+      With:    log.error({ err }, 'payment.failed')
+               log.error({ reason: 'card_declined' }, 'payment.failed')
+    patterns:
+      - pattern: $LOG.error({...}, ...)
+      - pattern-not: $LOG.error({err: ..., ...}, ...)
+      - pattern-not: $LOG.error({reason: ..., ...}, ...)
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # HTTP REQUEST WORKLOAD
+  # Required fields: requestId, method, path, statusCode, durationMs
+  # =============================================================================
+
+  - id: http-event-missing-request-id
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Events prefixed 'request.' must include a 'requestId' field so all log
+      lines for one HTTP request can be correlated.
+      Add: log.$M({ requestId, ... }, 'request.$EVT')
+    patterns:
+      - pattern: $LOG.$M({...}, "request.$EVT")
+      - pattern-not: $LOG.$M({requestId: ..., ...}, "request.$EVT")
+    paths:
+      include:
+        - src/
+
+  - id: http-request-completed-missing-status-code
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      'request.completed' events must include 'statusCode' and 'durationMs'
+      for latency and error-rate dashboards.
+      Add: log.$M({ statusCode, durationMs, ... }, 'request.completed')
+    patterns:
+      - pattern: $LOG.$M({...}, "request.completed")
+      - pattern-not: $LOG.$M({statusCode: ..., ...}, "request.completed")
+    paths:
+      include:
+        - src/
+
+  - id: http-request-completed-missing-duration
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      'request.completed' events must include 'durationMs' for latency tracking.
+    patterns:
+      - pattern: $LOG.$M({...}, "request.completed")
+      - pattern-not: $LOG.$M({durationMs: ..., ...}, "request.completed")
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # BATCH JOB WORKLOAD
+  # Required fields: jobId, jobName, recordCount, durationMs, status
+  # =============================================================================
+
+  - id: batch-event-missing-job-id
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Events prefixed 'job.' must include a 'jobId' field.
+      Add: log.$M({ jobId, ... }, 'job.$EVT')
+    patterns:
+      - pattern: $LOG.$M({...}, "job.$EVT")
+      - pattern-not: $LOG.$M({jobId: ..., ...}, "job.$EVT")
+    paths:
+      include:
+        - src/
+
+  - id: batch-job-completed-missing-record-count
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      'job.completed' events must include 'recordCount' and 'durationMs'
+      to detect anomalies such as zero records processed.
+    patterns:
+      - pattern: $LOG.$M({...}, "job.completed")
+      - pattern-not: $LOG.$M({recordCount: ..., ...}, "job.completed")
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # ETL PIPELINE WORKLOAD
+  # Required fields: pipelineId, source, destination, rowsIn, rowsOut, errorCount
+  # =============================================================================
+
+  - id: etl-event-missing-pipeline-id
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Events prefixed 'pipeline.' must include a 'pipelineId' field.
+      Add: log.$M({ pipelineId, ... }, 'pipeline.$EVT')
+    patterns:
+      - pattern: $LOG.$M({...}, "pipeline.$EVT")
+      - pattern-not: $LOG.$M({pipelineId: ..., ...}, "pipeline.$EVT")
+    paths:
+      include:
+        - src/
+
+  - id: etl-pipeline-completed-missing-row-counts
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      'pipeline.completed' events must include 'rowsIn', 'rowsOut', and
+      'errorCount' to detect silent data loss automatically.
+    patterns:
+      - pattern: $LOG.$M({...}, "pipeline.completed")
+      - pattern-not: $LOG.$M({rowsIn: ..., ...}, "pipeline.completed")
+    paths:
+      include:
+        - src/
+
+  # =============================================================================
+  # ASYNC / QUEUE WORKER WORKLOAD
+  # Required fields: messageId, queueName, attempt, durationMs
+  # =============================================================================
+
+  - id: async-event-missing-message-id
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Events prefixed 'message.' must include a 'messageId' field so a queue
+      message can be traced through retries and DLQ moves.
+      Add: log.$M({ messageId, ... }, 'message.$EVT')
+    patterns:
+      - pattern: $LOG.$M({...}, "message.$EVT")
+      - pattern-not: $LOG.$M({messageId: ..., ...}, "message.$EVT")
+    paths:
+      include:
+        - src/
+
+  - id: async-event-missing-queue-name
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Events prefixed 'message.' must include 'queueName' for per-queue alerting.
+    patterns:
+      - pattern: $LOG.$M({...}, "message.$EVT")
+      - pattern-not: $LOG.$M({queueName: ..., ...}, "message.$EVT")
+    paths:
+      include:
+        - src/
