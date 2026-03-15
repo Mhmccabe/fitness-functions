@@ -61,6 +61,67 @@ jobs:
         # Violations are warnings — build continues, summary shows the count
         continue-on-error: true
 
+      - name: Convert Semgrep results to SARIF
+        if: always()
+        run: |
+          python3 - << 'PYEOF'
+          import json, datetime
+
+          try:
+              data = json.load(open('semgrep-results.json'))
+              results = data.get('results', [])
+          except Exception:
+              results = []
+
+          runs = [{
+              "tool": {
+                  "driver": {
+                      "name": "Semgrep",
+                      "informationUri": "https://semgrep.dev",
+                      "rules": []
+                  }
+              },
+              "results": []
+          }]
+
+          rule_ids = {}
+          for r in results:
+              rule_id = r.get('check_id', 'unknown')
+              msg = r.get('extra', {}).get('message', '').splitlines()[0]
+              if rule_id not in rule_ids:
+                  rule_ids[rule_id] = len(rule_ids)
+                  runs[0]['tool']['driver']['rules'].append({
+                      "id": rule_id,
+                      "shortDescription": {"text": msg},
+                      "helpUri": "https://semgrep.dev"
+                  })
+              runs[0]['results'].append({
+                  "ruleId": rule_id,
+                  "message": {"text": msg},
+                  "locations": [{
+                      "physicalLocation": {
+                          "artifactLocation": {"uri": r.get('path', '')},
+                          "region": {
+                              "startLine": r.get('start', {}).get('line', 1),
+                              "startColumn": r.get('start', {}).get('col', 1)
+                          }
+                      }
+                  }],
+                  "level": "warning"
+              })
+
+          sarif = {"version": "2.1.0", "$schema": "https://json.schemastore.org/sarif-2.1.0.json", "runs": runs}
+          with open('semgrep.sarif', 'w') as f:
+              json.dump(sarif, f, indent=2)
+          PYEOF
+
+      - name: Upload Semgrep SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: Python/logging-standards/semgrep.sarif
+          category: semgrep-python-logging
+
       - name: Upload Semgrep results
         if: always()
         uses: actions/upload-artifact@v4
@@ -123,45 +184,54 @@ jobs:
       - name: Write job summary
         if: always()
         run: |
-          VIOLATIONS=$(python3 -c "
-          import json, sys
+          python3 - << 'PYEOF'
+          import json, xml.etree.ElementTree as ET
+
+          # --- violations ---
           try:
               data = json.load(open('semgrep-results.json'))
-              print(len(data.get('results', [])))
+              results = data.get('results', [])
+              violation_count = len(results)
           except Exception:
-              print('N/A')
-          ")
+              results = []
+              violation_count = 'N/A'
 
-          COVERAGE=$(python3 -c "
-          import xml.etree.ElementTree as ET, sys
+          # --- coverage ---
           try:
               rate = float(ET.parse('coverage.xml').getroot().get('line-rate', 0)) * 100
-              print(f'{rate:.1f}')
+              coverage = f'{rate:.1f}'
+              coverage_ok = rate >= 80
           except Exception:
-              print('N/A')
-          ")
+              coverage = 'N/A'
+              coverage_ok = False
 
-          if [ "$VIOLATIONS" = "0" ]; then
-            VIOLATIONS_STATUS="✅ 0"
-          else
-            VIOLATIONS_STATUS="⚠️ $VIOLATIONS"
-          fi
+          v_icon = '✅' if violation_count == 0 else '⚠️'
+          c_icon = '✅' if coverage_ok else '❌'
 
-          if [ "$COVERAGE" != "N/A" ] && [ "$(python3 -c "print(float('$COVERAGE') >= 80)")" = "True" ]; then
-            COVERAGE_STATUS="✅ ${COVERAGE}%"
-          else
-            COVERAGE_STATUS="❌ ${COVERAGE}%"
-          fi
+          lines = []
+          lines.append('## Fitness Function — Python Logging Standards\n')
+          lines.append('| Check | Result |')
+          lines.append('|---|---|')
+          lines.append(f'| Logging violations (semgrep) | {v_icon} {violation_count} |')
+          lines.append(f'| Test coverage | {c_icon} {coverage}% |')
+          lines.append('')
 
-          cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## Fitness Function — Python Logging Standards
+          if results:
+              lines.append('### ⚠️ Violations\n')
+              lines.append('| File | Line | Rule | Message |')
+              lines.append('|---|---|---|---|')
+              for r in results:
+                  path = r.get('path', '')
+                  line = r.get('start', {}).get('line', '')
+                  rule = r.get('check_id', '').split('.')[-1]
+                  msg  = r.get('extra', {}).get('message', '').splitlines()[0][:120]
+                  lines.append(f'| `{path}` | {line} | `{rule}` | {msg} |')
+              lines.append('')
 
-          | Check | Result |
-          |---|---|
-          | Logging violations (semgrep) | ${VIOLATIONS_STATUS} |
-          | Test coverage | ${COVERAGE_STATUS} |
+          lines.append(f'**Commit:** `${{ github.sha }}`  ')
+          lines.append(f'**Branch:** `${{ github.ref_name }}`  ')
+          lines.append(f'**Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})')
 
-          **Commit:** \`${{ github.sha }}\`
-          **Branch:** \`${{ github.ref_name }}\`
-          **Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          EOF
+          with open('$GITHUB_STEP_SUMMARY', 'a') as f:
+              f.write('\n'.join(lines) + '\n')
+          PYEOF

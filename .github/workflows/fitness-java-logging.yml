@@ -57,6 +57,40 @@ jobs:
           sys.exit(0)
           ")
 
+      - name: Convert Semgrep results to SARIF
+        if: always()
+        run: |
+          python3 - << 'PYEOF'
+          import json
+
+          try:
+              data = json.load(open('semgrep-results.json'))
+              results = data.get('results', [])
+          except Exception:
+              results = []
+
+          runs = [{"tool": {"driver": {"name": "Semgrep", "informationUri": "https://semgrep.dev", "rules": []}}, "results": []}]
+          rule_ids = {}
+          for r in results:
+              rule_id = r.get('check_id', 'unknown')
+              msg = r.get('extra', {}).get('message', '').splitlines()[0]
+              if rule_id not in rule_ids:
+                  rule_ids[rule_id] = True
+                  runs[0]['tool']['driver']['rules'].append({"id": rule_id, "shortDescription": {"text": msg}, "helpUri": "https://semgrep.dev"})
+              runs[0]['results'].append({"ruleId": rule_id, "message": {"text": msg}, "locations": [{"physicalLocation": {"artifactLocation": {"uri": r.get('path', '')}, "region": {"startLine": r.get('start', {}).get('line', 1), "startColumn": r.get('start', {}).get('col', 1)}}}], "level": "warning"})
+
+          sarif = {"version": "2.1.0", "$schema": "https://json.schemastore.org/sarif-2.1.0.json", "runs": runs}
+          with open('semgrep.sarif', 'w') as f:
+              json.dump(sarif, f, indent=2)
+          PYEOF
+
+      - name: Upload Semgrep SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: Java/logging-standards/semgrep.sarif
+          category: semgrep-java-logging
+
       - name: Upload Semgrep results
         if: always()
         uses: actions/upload-artifact@v4
