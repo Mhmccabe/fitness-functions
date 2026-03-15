@@ -111,3 +111,52 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      # ── Layer 6: GitHub Actions job summary ───────────────────────────────
+      # Writes a markdown summary visible on the Actions run page under
+      # the "Summary" tab — no extra infrastructure required.
+      - name: Write job summary
+        if: always()
+        run: |
+          VIOLATIONS=$(python3 -c "
+          import json, sys
+          try:
+              data = json.load(open('semgrep-results.json'))
+              print(len(data.get('results', [])))
+          except Exception:
+              print('N/A')
+          ")
+
+          COVERAGE=$(python3 -c "
+          import xml.etree.ElementTree as ET, sys
+          try:
+              rate = float(ET.parse('coverage.xml').getroot().get('line-rate', 0)) * 100
+              print(f'{rate:.1f}')
+          except Exception:
+              print('N/A')
+          ")
+
+          if [ "$VIOLATIONS" = "0" ]; then
+            VIOLATIONS_STATUS="✅ 0"
+          else
+            VIOLATIONS_STATUS="❌ $VIOLATIONS"
+          fi
+
+          if [ "$COVERAGE" != "N/A" ] && [ "$(python3 -c "print(float('$COVERAGE') >= 80)")" = "True" ]; then
+            COVERAGE_STATUS="✅ ${COVERAGE}%"
+          else
+            COVERAGE_STATUS="❌ ${COVERAGE}%"
+          fi
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Fitness Function — Python Logging Standards
+
+          | Check | Result |
+          |---|---|
+          | Logging violations (semgrep) | ${VIOLATIONS_STATUS} |
+          | Test coverage | ${COVERAGE_STATUS} |
+
+          **Commit:** \`${{ github.sha }}\`
+          **Branch:** \`${{ github.ref_name }}\`
+          **Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF

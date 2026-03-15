@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Sonar scanner working directory
+.scannerwork/
+
+# Pytest cache and coverage
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Semgrep results (generated artifact)
+semgrep-results.json
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Build / packaging
+*.egg-info/
+dist/
+build/
