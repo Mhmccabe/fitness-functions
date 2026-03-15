@@ -29,12 +29,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -92,14 +92,14 @@ jobs:
 
       - name: Upload Semgrep SARIF to GitHub Code Scanning
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818
         with:
           sarif_file: Java/logging-standards/semgrep.sarif
           category: semgrep-java-logging
 
       - name: Upload Semgrep results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: semgrep-results-java
           path: Java/logging-standards/semgrep-results.json
@@ -110,7 +110,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: coverage-report-java
           path: Java/logging-standards/target/site/jacoco/jacoco.xml
@@ -118,7 +118,7 @@ jobs:
       # ── Layer 3: SonarQube static analysis ────────────────────────────────
       - name: SonarQube scan
         continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v3
+        uses: SonarSource/sonarqube-scan-action@13990a695682794b53148ff9f6a8b6e22e43955e
         with:
           projectBaseDir: Java/logging-standards
         env:
