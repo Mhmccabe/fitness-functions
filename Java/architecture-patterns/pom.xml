@@ -55,6 +55,10 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
+        <configuration>
+          <!-- Write XML reports so SonarQube can import test results -->
+          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+        </configuration>
       </plugin>
 
       <!-- JaCoCo coverage — report read by SonarQube -->

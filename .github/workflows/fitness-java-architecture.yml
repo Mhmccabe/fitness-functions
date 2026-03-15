@@ -116,6 +116,13 @@ jobs:
           name: coverage-report-java-architecture
           path: Java/architecture-patterns/target/site/jacoco/jacoco.xml
 
+      - name: Upload surefire test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: surefire-reports-java-architecture
+          path: Java/architecture-patterns/target/surefire-reports/
+
       # ── Layer 3: SonarQube static analysis ────────────────────────────────
       - name: SonarQube scan
         continue-on-error: true
