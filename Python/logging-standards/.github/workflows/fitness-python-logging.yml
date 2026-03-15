@@ -48,6 +48,8 @@ jobs:
           semgrep \
             --config .semgrep/logging-rules.yml \
             src/ \
+            --exclude src/app_bad.py \
+            --exclude src/app_good.py \
             --json \
             --output semgrep-results.json \
             --quiet
