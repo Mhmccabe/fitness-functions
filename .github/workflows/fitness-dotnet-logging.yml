@@ -102,6 +102,61 @@ jobs:
           name: semgrep-results-dotnet
           path: dotnet/logging-standards/semgrep-results.json
 
+      # ── Layer 1b: Semgrep — Required fields rules ──────────────────────────
+      - name: Semgrep — required fields rules
+        run: |
+          semgrep \
+            --config .semgrep/required-fields-rules.yml \
+            src/ \
+            --exclude="*Bad.cs" \
+            --json \
+            --output semgrep-required-fields-results.json \
+            --quiet \
+            --no-autofix \
+            --metrics=off || true
+        continue-on-error: true
+
+      - name: Convert required-fields results to SARIF
+        if: always()
+        run: |
+          python3 - << 'PYEOF'
+          import json
+
+          try:
+              data = json.load(open('semgrep-required-fields-results.json'))
+              results = data.get('results', [])
+          except Exception:
+              results = []
+
+          runs = [{"tool": {"driver": {"name": "Semgrep", "informationUri": "https://semgrep.dev", "rules": []}}, "results": []}]
+          rule_ids = {}
+          for r in results:
+              rule_id = r.get('check_id', 'unknown')
+              msg = r.get('extra', {}).get('message', '').splitlines()[0]
+              if rule_id not in rule_ids:
+                  rule_ids[rule_id] = True
+                  runs[0]['tool']['driver']['rules'].append({"id": rule_id, "shortDescription": {"text": msg}, "helpUri": "https://semgrep.dev"})
+              runs[0]['results'].append({"ruleId": rule_id, "message": {"text": msg}, "locations": [{"physicalLocation": {"artifactLocation": {"uri": r.get('path', '')}, "region": {"startLine": r.get('start', {}).get('line', 1), "startColumn": r.get('start', {}).get('col', 1)}}}], "level": "warning"})
+
+          sarif = {"version": "2.1.0", "$schema": "https://json.schemastore.org/sarif-2.1.0.json", "runs": runs}
+          with open('semgrep-required-fields.sarif', 'w') as f:
+              json.dump(sarif, f, indent=2)
+          PYEOF
+
+      - name: Upload required-fields SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818
+        with:
+          sarif_file: dotnet/logging-standards/semgrep-required-fields.sarif
+          category: semgrep-dotnet-logging-required-fields
+
+      - name: Upload required-fields results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: semgrep-required-fields-results-dotnet
+          path: dotnet/logging-standards/semgrep-required-fields-results.json
+
       # ── Layer 2: dotnet build and tests ────────────────────────────────────
       - name: Build
         run: dotnet build LoggingStandards.sln --configuration Release
@@ -144,10 +199,25 @@ jobs:
               print('N/A')
           ")
 
+          RF_VIOLATIONS=$(python3 -c "
+          import json, sys
+          try:
+              data = json.load(open('semgrep-required-fields-results.json'))
+              print(len(data.get('results', [])))
+          except Exception:
+              print('N/A')
+          ")
+
           if [[ "$VIOLATIONS" = "0" ]]; then
             VIOLATIONS_STATUS="✅ 0"
           else
             VIOLATIONS_STATUS="⚠️ $VIOLATIONS"
+          fi
+
+          if [[ "$RF_VIOLATIONS" = "0" ]]; then
+            RF_STATUS="✅ 0"
+          else
+            RF_STATUS="⚠️ $RF_VIOLATIONS"
           fi
 
           cat >> $GITHUB_STEP_SUMMARY << EOF
@@ -156,6 +226,7 @@ jobs:
           | Check | Result |
           |---|---|
           | Logging violations (semgrep) | ${VIOLATIONS_STATUS} |
+          | Required fields violations (semgrep) | ${RF_STATUS} |
 
           **Commit:** \`${{ github.sha }}\`
           **Branch:** \`${{ github.ref_name }}\`

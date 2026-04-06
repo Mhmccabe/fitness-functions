@@ -39,6 +39,7 @@ semgrep \
   --config .semgrep/logging-rules.yml \
   --config .semgrep/required-fields-rules.yml \
   src/main/ \
+  --exclude="*Bad.java" \
   --json \
   --output "$SEMGREP_RESULTS" \
   --quiet
@@ -51,10 +52,26 @@ print(len(data.get('results', [])))
 
 if [[ "$VIOLATIONS" -gt 0 ]]; then
   echo "  FAILED: $VIOLATIONS violation(s) found"
-  semgrep --config .semgrep/logging-rules.yml src/main/ --quiet 2>&1 || true
+  semgrep --config .semgrep/logging-rules.yml src/main/ --exclude="*Bad.java" --quiet 2>&1 || true
   PASSED=false
 else
-  echo "  PASSED: No logging violations"
+  echo "  PASSED: No logging violations in production files"
+fi
+
+# Verify bad example files DO trigger violations (catches rule regressions)
+echo ""
+echo "  Verifying bad example files trigger violations..."
+BAD_VIOLATIONS=$(semgrep \
+  --config .semgrep/logging-rules.yml \
+  src/main/ \
+  --include="*Bad.java" \
+  --json 2>/dev/null \
+  | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('results', [])))")
+
+if [[ "$BAD_VIOLATIONS" -gt 0 ]]; then
+  echo "  ✓ Bad examples trigger $BAD_VIOLATIONS violations as expected"
+else
+  echo "  ⚠ Warning: Bad examples trigger no violations — rules may not be working"
 fi
 
 echo ""
