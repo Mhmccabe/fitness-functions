@@ -8,7 +8,7 @@ def test_create_order_returns_pending():
     order = order_service.create_order("user-1", 100.0)
     assert order.order_id is not None
     assert order.user_id == "user-1"
-    assert order.amount == 100.0
+    assert order.amount == pytest.approx(100.0)
     assert order.status == "pending"
 
 
