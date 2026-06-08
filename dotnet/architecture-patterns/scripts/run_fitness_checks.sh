@@ -34,6 +34,7 @@ if ! command -v semgrep &> /dev/null; then
   exit 1
 fi
 
+echo '{"results":[]}' > "$SEMGREP_RESULTS"
 semgrep \
   --config .semgrep/architecture-rules.yml \
   src/ \

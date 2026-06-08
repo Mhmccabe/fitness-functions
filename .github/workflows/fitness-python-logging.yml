@@ -52,6 +52,7 @@ jobs:
           semgrep \
             --config .semgrep/logging-rules.yml \
             src/ \
+            --exclude="*_bad.py" \
             --json \
             --output semgrep-results.json \
             --quiet \

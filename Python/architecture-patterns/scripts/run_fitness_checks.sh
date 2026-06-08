@@ -35,6 +35,7 @@ if ! command -v semgrep &> /dev/null; then
   exit 1
 fi
 
+echo '{"results":[]}' > "$SEMGREP_RESULTS"
 semgrep \
   --config .semgrep/architecture-rules.yml \
   src/ \
@@ -72,11 +73,16 @@ if command -v python3 &> /dev/null; then
     PASSED=false
   fi
 
-  PYTHONPATH=. pytest tests/ \
-    --cov=src \
-    --cov-report=xml:coverage.xml \
-    --cov-report=term-missing \
-    --tb=short
+  if PYTHONPATH=. pytest tests/ \
+      --cov=src \
+      --cov-report=xml:coverage.xml \
+      --cov-report=term-missing \
+      --tb=short; then
+    echo "  PASSED: pytest tests succeeded"
+  else
+    echo "  FAILED: pytest tests failed" >&2
+    PASSED=false
+  fi
 else
   echo "  python3 not found — skipping" >&2
 fi
